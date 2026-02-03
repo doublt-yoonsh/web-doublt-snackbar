@@ -1,11 +1,19 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Cookie, Coffee } from 'lucide-react';
 import type { OrderType } from '@/shared/types';
 
 export default function Home() {
   const [orderType, setOrderType] = useState<OrderType | null>(null);
+  const [visitCount, setVisitCount] = useState(0);
+
+  // 테스트: 방문 횟수 추적
+  useEffect(() => {
+    const count = localStorage.getItem('visitCount');
+    setVisitCount(parseInt(count || '0') + 1);
+    localStorage.setItem('visitCount', visitCount.toString());
+  }, []);
 
   if (orderType) {
     return (
