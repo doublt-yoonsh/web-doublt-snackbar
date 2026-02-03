@@ -45,15 +45,10 @@ jobs:
           claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
           show_full_output: true
           use_sticky_comment: true
-          additional_permissions: |
-            - tool: Bash
-              pattern: "gh pr comment*"
-              allow: always
-            - tool: Bash
-              pattern: "gh pr *"
-              allow: always
-          claude_args: |
-            --allowedTools "Bash(gh pr *),Bash(git *),Write(/tmp/*)"
+          settings: |
+            {
+              "permissionMode": "always"
+            }
           prompt: |
             이 PR의 코드 변경사항을 검토하고 CLAUDE.md 가이드라인에 따라 리뷰해주세요.
 
