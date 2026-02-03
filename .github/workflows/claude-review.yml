@@ -45,84 +45,10 @@ jobs:
           PR_TITLE: ${{ github.event.pull_request.title }}
           PR_AUTHOR: ${{ github.event.pull_request.user.login }}
           REPO: ${{ github.repository }}
-          BASE_REF: ${{ github.event.pull_request.base.ref }}
         run: |
-          git fetch origin "$BASE_REF"
-          DIFF=$(git diff "origin/$BASE_REF"...HEAD)
-
-          python3 << 'PYTHON_SCRIPT'
-          import os
-          import json
-          import subprocess
-
-          diff = os.environ['DIFF']
-          api_key = os.environ['ANTHROPIC_API_KEY']
-          pr_number = os.environ['PR_NUMBER']
-          pr_title = os.environ['PR_TITLE']
-          pr_author = os.environ['PR_AUTHOR']
-          repo = os.environ['REPO']
-
-          prompt = f"""당신은 코드 리뷰 전문가입니다. 아래 PR을 검토해주세요.
-
-## PR 정보
-- 제목: {pr_title}
-- 작성자: {pr_author}
-- 레포: {repo}
-
-## 변경사항
-```diff
-{diff}
-```
-
-## 리뷰 기준 (CLAUDE.md 참고)
-- [Critical] 버그, 보안 취약점, 타입 안정성 문제
-- [Warning] 아키텍처 위반, 성능 이슈, 에러 핸들링 누락
-- [Suggestion] 코드 개선 제안
-
-## 출력 형식
-```markdown
-## 🤖 Claude Code Review
-
-### 📊 Summary
-(2-3줄 요약)
-
-### 🔍 Issues Found
-
-#### 🔴 Critical
-- 파일명:줄번호 - 이슈 설명
-
-#### 🟡 Warning
-- 파일명:줄번호 - 이슈 설명
-
-#### 💡 Suggestion
-- 파일명:줄번호 - 제안
-
-### ✅ Good Points
-- 잘된 점
-
-### 📝 Overall
-Status: [✅ Approved | 🔴 Changes Requested]
-```"""
-
-          payload = {
-              "model": "claude-sonnet-4-5-20250929",
-              "max_tokens": 16000,
-              "messages": [{"role": "user", "content": prompt}]
-          }
-
-          result = subprocess.run([
-              'curl', '-s', 'https://api.anthropic.com/v1/messages',
-              '-H', 'Content-Type: application/json',
-              '-H', f'x-api-key: {api_key}',
-              '-H', 'anthropic-version: 2023-06-01',
-              '-d', json.dumps(payload)
-          ], capture_output=True, text=True)
-
-          response = json.loads(result.stdout)
-          review = response['content'][0]['text']
-
-          subprocess.run(['gh', 'pr', 'comment', pr_number, '--body', review])
-          PYTHON_SCRIPT
+          git fetch origin ${{ github.event.pull_request.base.ref }}
+          export DIFF=$(git diff origin/${{ github.event.pull_request.base.ref }}...HEAD)
+          python3 .github/scripts/review.py
 
   incremental-review:
     if: github.event_name == 'pull_request' && github.event.action == 'synchronize'
@@ -145,59 +71,9 @@ Status: [✅ Approved | 🔴 Changes Requested]
           ANTHROPIC_API_KEY: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
           GH_TOKEN: ${{ github.token }}
           PR_NUMBER: ${{ github.event.pull_request.number }}
-          BEFORE_SHA: ${{ github.event.before }}
-          AFTER_SHA: ${{ github.event.after }}
         run: |
-          DIFF=$(git diff "$BEFORE_SHA".."$AFTER_SHA")
-
-          python3 << 'PYTHON_SCRIPT'
-          import os
-          import json
-          import subprocess
-
-          diff = os.environ['DIFF']
-          api_key = os.environ['ANTHROPIC_API_KEY']
-          pr_number = os.environ['PR_NUMBER']
-
-          prompt = f"""새 커밋이 푸시되었습니다. 증분 리뷰를 수행하세요.
-
-## 변경사항
-```diff
-{diff}
-```
-
-이번 커밋에서 새로 추가된 이슈만 리뷰하세요.
-
-## 출력 형식
-```markdown
-## 🔄 Incremental Review
-
-### New Issues
-- 🔴 [Critical] 이슈
-- 🟡 [Warning] 이슈
-
-### Status: [✅ Approved | 🔴 Changes Requested]
-```"""
-
-          payload = {
-              "model": "claude-sonnet-4-5-20250929",
-              "max_tokens": 16000,
-              "messages": [{"role": "user", "content": prompt}]
-          }
-
-          result = subprocess.run([
-              'curl', '-s', 'https://api.anthropic.com/v1/messages',
-              '-H', 'Content-Type: application/json',
-              '-H', f'x-api-key: {api_key}',
-              '-H', 'anthropic-version: 2023-06-01',
-              '-d', json.dumps(payload)
-          ], capture_output=True, text=True)
-
-          response = json.loads(result.stdout)
-          review = response['content'][0]['text']
-
-          subprocess.run(['gh', 'pr', 'comment', pr_number, '--body', review])
-          PYTHON_SCRIPT
+          export DIFF=$(git diff ${{ github.event.before }}..${{ github.event.after }})
+          python3 .github/scripts/review.py
 
   mention-response:
     if: |
@@ -221,34 +97,7 @@ Status: [✅ Approved | 🔴 Changes Requested]
         env:
           ANTHROPIC_API_KEY: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
           GH_TOKEN: ${{ github.token }}
-          COMMENT_BODY: ${{ github.event.comment.body }}
           PR_NUMBER: ${{ github.event.pull_request.number || github.event.issue.number }}
         run: |
-          python3 << 'PYTHON_SCRIPT'
-          import os
-          import json
-          import subprocess
-
-          comment = os.environ['COMMENT_BODY']
-          api_key = os.environ['ANTHROPIC_API_KEY']
-          pr_number = os.environ['PR_NUMBER']
-
-          payload = {
-              "model": "claude-sonnet-4-5-20250929",
-              "max_tokens": 8000,
-              "messages": [{"role": "user", "content": comment}]
-          }
-
-          result = subprocess.run([
-              'curl', '-s', 'https://api.anthropic.com/v1/messages',
-              '-H', 'Content-Type: application/json',
-              '-H', f'x-api-key: {api_key}',
-              '-H', 'anthropic-version: 2023-06-01',
-              '-d', json.dumps(payload)
-          ], capture_output=True, text=True)
-
-          response = json.loads(result.stdout)
-          reply = response['content'][0]['text']
-
-          subprocess.run(['gh', 'pr', 'comment', pr_number, '--body', reply])
-          PYTHON_SCRIPT
+          export DIFF="${{ github.event.comment.body }}"
+          python3 .github/scripts/review.py
