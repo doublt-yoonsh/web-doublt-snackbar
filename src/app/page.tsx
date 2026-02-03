@@ -4,16 +4,32 @@ import { useState, useEffect } from 'react';
 import { Cookie, Coffee } from 'lucide-react';
 import type { OrderType } from '@/shared/types';
 
+// 문제 1: any 타입 사용
+function processData(data: any) {
+  return data.value + 100;
+}
+
 export default function Home() {
   const [orderType, setOrderType] = useState<OrderType | null>(null);
   const [visitCount, setVisitCount] = useState(0);
+  const [userData, setUserData] = useState(null);
 
-  // 테스트: 방문 횟수 추적
+  // 문제 2: useEffect 의존성 배열 오류 (visitCount 누락)
   useEffect(() => {
     const count = localStorage.getItem('visitCount');
     setVisitCount(parseInt(count || '0') + 1);
     localStorage.setItem('visitCount', visitCount.toString());
   }, []);
+
+  // 문제 3: 에러 핸들링 없는 비동기 작업
+  useEffect(() => {
+    fetch('https://api.example.com/user')
+      .then(res => res.json())
+      .then(data => setUserData(data));
+  }, []);
+
+  // 문제 4: 하드코딩된 API URL
+  const MAX_ITEMS = 50;
 
   if (orderType) {
     return (
