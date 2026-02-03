@@ -46,7 +46,7 @@ jobs:
           show_full_output: true
           use_sticky_comment: true
           claude_args: |
-            --allow-all-tools
+            --allowedTools "Bash(gh pr *),Bash(git *),Write(/tmp/*)"
           prompt: |
             이 PR의 코드 변경사항을 검토하고 CLAUDE.md 가이드라인에 따라 리뷰해주세요.
 
