@@ -1,0 +1,196 @@
+name: Claude Code Review
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened]
+    paths:
+      - 'src/**/*.{ts,tsx}'
+      - '**/*.{json,yml,yaml}'
+      - '!**/*.test.{ts,tsx}'
+  issue_comment:
+    types: [created]
+  pull_request_review_comment:
+    types: [created]
+
+# 동일 PR에서 중복 실행 방지
+concurrency:
+  group: claude-review-${{ github.event.pull_request.number || github.event.issue.number }}
+  cancel-in-progress: true
+
+jobs:
+  # ===========================================
+  # PR 생성 시 초기 전체 리뷰
+  # ===========================================
+  initial-review:
+    if: |
+      github.event_name == 'pull_request' &&
+      github.event.action == 'opened' &&
+      github.event.pull_request.draft == false
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    permissions:
+      contents: read
+      pull-requests: write
+      issues: write
+      id-token: write
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Initial Code Review
+        uses: anthropics/claude-code-action@v1
+        with:
+          claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+          prompt: |
+            REPO: ${{ github.repository }}
+            PR_NUMBER: ${{ github.event.pull_request.number }}
+            BASE_BRANCH: ${{ github.event.pull_request.base.ref }}
+            PR_TITLE: ${{ github.event.pull_request.title }}
+            PR_AUTHOR: ${{ github.event.pull_request.user.login }}
+
+            이 PR에 대해 코드 리뷰를 수행하세요.
+
+            ## 변경사항 확인
+            `git diff origin/${BASE_BRANCH}...HEAD` 로 전체 변경사항을 확인하세요.
+
+            ## 리뷰 기준 (CLAUDE.md 참고)
+            - [Critical] 버그, 보안 취약점, 메모리 누수, 타입 안정성 문제
+            - [Warning] 아키텍처 위반, 성능 이슈, 에러 핸들링 누락
+            - [Suggestion] 코드 개선 제안, 가독성 향상
+
+            ## 리뷰 방법
+            1. 전체 요약은 `gh pr comment ${PR_NUMBER} --body "내용"` 으로 PR에 코멘트
+            2. 특정 코드 라인 이슈는 `gh pr comment ${PR_NUMBER} --body "내용" --body-file - <<< "내용"` 로 인라인 코멘트 작성
+            3. 심각한 이슈가 있으면 `gh pr review ${PR_NUMBER} --request-changes`
+            4. 문제없으면 `gh pr review ${PR_NUMBER} --approve`
+
+            ## 출력 형식
+            PR 코멘트로 아래 형식 사용:
+            ```markdown
+            ## 🤖 Claude Code Review
+
+            ### 📊 Summary
+            (2-3줄로 변경사항 요약)
+
+            ### 🔍 Issues Found
+
+            #### 🔴 Critical
+            - 파일명:줄번호 - 이슈 설명
+
+            #### 🟡 Warning
+            - 파일명:줄번호 - 이슈 설명
+
+            #### 💡 Suggestion
+            - 파일명:줄번호 - 제안 사항
+
+            ### ✅ Good Points
+            - 잘된 부분들
+
+            ### 📝 Overall
+            Status: [✅ Approved | 🔴 Changes Requested]
+            ```
+
+          claude_args: "--max-turns 12"
+
+  # ===========================================
+  # 새 커밋 푸시 시 증분 리뷰
+  # ===========================================
+  incremental-review:
+    if: github.event_name == 'pull_request' && github.event.action == 'synchronize'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    permissions:
+      contents: read
+      pull-requests: write
+      issues: write
+      id-token: write
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Incremental Review with Auto-Resolve
+        uses: anthropics/claude-code-action@v1
+        with:
+          claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+          prompt: |
+            REPO: ${{ github.repository }}
+            PR_NUMBER: ${{ github.event.pull_request.number }}
+            BEFORE_SHA: ${{ github.event.before }}
+            AFTER_SHA: ${{ github.event.after }}
+
+            새 커밋이 푸시되었습니다. 아래 순서대로 작업하세요.
+
+            ## Step 1: 이전 리뷰 코멘트 조회 및 기억
+            ```bash
+            gh api repos/${{ github.repository }}/pulls/${PR_NUMBER}/comments
+            ```
+            - 내가 남긴 코멘트들(github-actions bot)을 확인
+            - 각 코멘트의 파일 경로, 라인, 내용을 기억해두세요
+
+            ## Step 2: 해결된 이슈 확인 및 응답
+            각 이전 코멘트에 대해:
+            1. 해당 코드 라인이 수정되었는지 현재 코드와 비교
+            2. 수정되었으면 해당 스레드에 "✅ Fixed in ${AFTER_SHA:0:7}" 답글
+            3. 여전히 문제가 있으면 "⚠️ Still needs attention" 답글
+
+            ## Step 3: 새 변경사항 리뷰
+            ```bash
+            git diff ${BEFORE_SHA}..${AFTER_SHA}
+            ```
+            - 이번 커밋에서 변경된 부분만 리뷰
+            - **중요: Step 1에서 기억한 이전 이슈는 다시 언급하지 말 것**
+            - 완전히 새로운 이슈만 코멘트
+
+            ## Step 4: 요약 코멘트
+            PR에 요약 코멘트 작성:
+            ```markdown
+            ## 🔄 Incremental Review (${AFTER_SHA:0:7})
+
+            ### Resolved Issues
+            - ✅ [이슈 내용] (file.ts:42) - Fixed
+
+            ### New Issues
+            - 🔴 [Critical] 새 이슈 내용
+            - 🟡 [Warning] 새 이슈 내용
+
+            ### Status: [Approved ✅ / Changes Requested 🔴]
+            ```
+
+          claude_args: "--max-turns 12"
+
+  # ===========================================
+  # @claude 멘션 대응
+  # ===========================================
+  mention-response:
+    if: |
+      (github.event_name == 'issue_comment' && contains(github.event.comment.body, '@claude')) ||
+      (github.event_name == 'pull_request_review_comment' && contains(github.event.comment.body, '@claude'))
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    permissions:
+      contents: read
+      pull-requests: write
+      issues: write
+      id-token: write
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Respond to Mention
+        uses: anthropics/claude-code-action@v1
+        with:
+          claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+          # prompt 없이 실행하면 @claude 멘션 내용에 자동 응답
+          claude_args: "--max-turns 8"
