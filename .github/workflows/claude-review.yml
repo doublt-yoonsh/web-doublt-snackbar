@@ -4,9 +4,13 @@ on:
   pull_request:
     types: [opened, synchronize, reopened]
     paths:
-      - 'src/**/*.{ts,tsx}'
-      - '**/*.{json,yml,yaml}'
-      - '!**/*.test.{ts,tsx}'
+      - 'src/**/*.ts'
+      - 'src/**/*.tsx'
+      - '**/*.json'
+      - '**/*.yml'
+      - '**/*.yaml'
+      - '!**/*.test.ts'
+      - '!**/*.test.tsx'
   issue_comment:
     types: [created]
   pull_request_review_comment:
@@ -22,10 +26,7 @@ jobs:
   # PR 생성 시 초기 전체 리뷰
   # ===========================================
   initial-review:
-    if: |
-      github.event_name == 'pull_request' &&
-      github.event.action == 'opened' &&
-      github.event.pull_request.draft == false
+    if: github.event_name == 'pull_request' && github.event.action == 'opened'
     runs-on: ubuntu-latest
     timeout-minutes: 10
 
