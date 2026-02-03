@@ -53,6 +53,7 @@ jobs:
       - name: Review with Claude API
         env:
           ANTHROPIC_API_KEY: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+          GH_TOKEN: ${{ github.token }}
         run: |
           RESPONSE=$(curl -s https://api.anthropic.com/v1/messages \
             -H "Content-Type: application/json" \
@@ -76,8 +77,6 @@ jobs:
 
           # Post review comment
           gh pr comment ${{ github.event.pull_request.number }} --body "$REVIEW"
-        env:
-          GH_TOKEN: ${{ github.token }}
 
   # ===========================================
   # 새 커밋 푸시 시 증분 리뷰
@@ -108,6 +107,7 @@ jobs:
       - name: Review with Claude API
         env:
           ANTHROPIC_API_KEY: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+          GH_TOKEN: ${{ github.token }}
         run: |
           RESPONSE=$(curl -s https://api.anthropic.com/v1/messages \
             -H "Content-Type: application/json" \
@@ -129,8 +129,6 @@ jobs:
 
           REVIEW=$(echo "$RESPONSE" | jq -r '.content[0].text')
           gh pr comment ${{ github.event.pull_request.number }} --body "$REVIEW"
-        env:
-          GH_TOKEN: ${{ github.token }}
 
   # ===========================================
   # @claude 멘션 대응
@@ -156,6 +154,7 @@ jobs:
       - name: Respond to mention
         env:
           ANTHROPIC_API_KEY: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+          GH_TOKEN: ${{ github.token }}
         run: |
           COMMENT="${{ github.event.comment.body }}"
 
@@ -179,5 +178,3 @@ jobs:
 
           REPLY=$(echo "$RESPONSE" | jq -r '.content[0].text')
           gh pr comment ${{ github.event.pull_request.number || github.event.issue.number }} --body "$REPLY"
-        env:
-          GH_TOKEN: ${{ github.token }}
