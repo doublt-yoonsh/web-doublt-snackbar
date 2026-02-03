@@ -81,10 +81,11 @@ Status: [✅ Approved | 🔴 Changes Requested]
         "messages": [{"role": "user", "content": prompt}]
     }
 
+    # OAuth token uses Authorization Bearer, not x-api-key
     result = subprocess.run([
         'curl', '-s', 'https://api.anthropic.com/v1/messages',
         '-H', 'Content-Type: application/json',
-        '-H', f'x-api-key: {api_key}',
+        '-H', f'Authorization: Bearer {api_key}',
         '-H', 'anthropic-version: 2023-06-01',
         '-d', json.dumps(payload)
     ], capture_output=True, text=True)
