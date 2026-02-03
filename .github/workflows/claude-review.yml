@@ -47,7 +47,14 @@ jobs:
           use_sticky_comment: true
           settings: |
             {
-              "permissionMode": "always"
+              "hooks": {
+                "PreToolUse": [
+                  {
+                    "matcher": "Bash(gh)",
+                    "hooks": [{"type": "auto_approve"}]
+                  }
+                ]
+              }
             }
           prompt: |
             이 PR의 코드 변경사항을 검토하고 CLAUDE.md 가이드라인에 따라 리뷰해주세요.
