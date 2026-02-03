@@ -34,3 +34,38 @@ jobs:
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
           anthropic_api_key: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+          prompt: |
+            이 PR의 코드 변경사항을 검토하고 다음 기준에 따라 리뷰해주세요:
+
+            ## 리뷰 기준 (CLAUDE.md 참고)
+            - [Critical] 버그, 보안 취약점, 타입 안정성 문제, 메모리 누수
+            - [Warning] 아키텍처 위반, 성능 이슈, 에러 핸들링 누락
+            - [Suggestion] 코드 개선 제안, 가독성 향상
+
+            ## 출력 형식
+            PR에 코멘트로 작성:
+            ```markdown
+            ## 🤖 Claude Code Review
+
+            ### 📊 Summary
+            (변경사항 2-3줄 요약)
+
+            ### 🔍 Issues Found
+
+            #### 🔴 Critical
+            - 파일명:줄번호 - 이슈 설명 및 해결 방법
+
+            #### 🟡 Warning
+            - 파일명:줄번호 - 이슈 설명 및 해결 방법
+
+            #### 💡 Suggestion
+            - 파일명:줄번호 - 제안 사항
+
+            ### ✅ Good Points
+            - 잘된 부분들
+
+            ### 📝 Overall
+            Status: [✅ Approved | 🔴 Changes Requested]
+            ```
+
+            반드시 발견한 모든 이슈를 구체적으로 지적하고, 파일명과 줄번호를 명시해주세요.
