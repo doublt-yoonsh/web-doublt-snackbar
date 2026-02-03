@@ -1,5 +1,11 @@
 # Code Review Guidelines
 
+---
+## ⛔ 중요: Claude 작업 규칙
+**절대로 git commit 시 `Co-Authored-By`를 추가하지 마세요. 커밋은 사용자만의 것입니다.**
+
+---
+
 ## 프로젝트 정보
 
 - **프로젝트**: DoubleT 스낵바 신청 서비스
