@@ -3,14 +3,6 @@ name: Claude Code Review
 on:
   pull_request:
     types: [opened, synchronize, reopened]
-    paths:
-      - 'src/**/*.ts'
-      - 'src/**/*.tsx'
-      - '**/*.json'
-      - '**/*.yml'
-      - '**/*.yaml'
-      - '!**/*.test.ts'
-      - '!**/*.test.tsx'
   issue_comment:
     types: [created]
   pull_request_review_comment:
@@ -21,83 +13,24 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  initial-review:
-    if: github.event_name == 'pull_request' && github.event.action == 'opened'
-    runs-on: ubuntu-latest
-    timeout-minutes: 10
-
-    permissions:
-      contents: read
-      pull-requests: write
-      issues: write
-
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
-
-      - name: Review with Claude API
-        env:
-          ANTHROPIC_API_KEY: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
-          GH_TOKEN: ${{ github.token }}
-          PR_NUMBER: ${{ github.event.pull_request.number }}
-          PR_TITLE: ${{ github.event.pull_request.title }}
-          PR_AUTHOR: ${{ github.event.pull_request.user.login }}
-          REPO: ${{ github.repository }}
-        run: |
-          git fetch origin ${{ github.event.pull_request.base.ref }}
-          export DIFF=$(git diff origin/${{ github.event.pull_request.base.ref }}...HEAD)
-          python3 .github/scripts/review.py
-
-  incremental-review:
-    if: github.event_name == 'pull_request' && github.event.action == 'synchronize'
-    runs-on: ubuntu-latest
-    timeout-minutes: 10
-
-    permissions:
-      contents: read
-      pull-requests: write
-      issues: write
-
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
-
-      - name: Review with Claude API
-        env:
-          ANTHROPIC_API_KEY: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
-          GH_TOKEN: ${{ github.token }}
-          PR_NUMBER: ${{ github.event.pull_request.number }}
-        run: |
-          export DIFF=$(git diff ${{ github.event.before }}..${{ github.event.after }})
-          python3 .github/scripts/review.py
-
-  mention-response:
+  claude-review:
+    # PR이 생성되거나 업데이트되거나, @claude 멘션이 있을 때 실행
     if: |
+      github.event_name == 'pull_request' ||
       (github.event_name == 'issue_comment' && contains(github.event.comment.body, '@claude')) ||
       (github.event_name == 'pull_request_review_comment' && contains(github.event.comment.body, '@claude'))
     runs-on: ubuntu-latest
-    timeout-minutes: 10
+    timeout-minutes: 15
 
     permissions:
       contents: read
       pull-requests: write
       issues: write
+      id-token: write
 
     steps:
-      - name: Checkout
-        uses: actions/checkout@v4
+      - name: Claude Code Action
+        uses: anthropics/claude-code-action@v1
         with:
-          fetch-depth: 0
-
-      - name: Respond to mention
-        env:
-          ANTHROPIC_API_KEY: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
-          GH_TOKEN: ${{ github.token }}
-          PR_NUMBER: ${{ github.event.pull_request.number || github.event.issue.number }}
-        run: |
-          export DIFF="${{ github.event.comment.body }}"
-          python3 .github/scripts/review.py
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          anthropic_api_key: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
