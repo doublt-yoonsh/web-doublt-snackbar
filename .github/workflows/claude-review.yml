@@ -39,23 +39,12 @@ jobs:
           fetch-depth: 1
 
       - name: Claude Code Action
-        uses: anthropics/claude-code-action@01e756b34ef7a1447e9598f674143b07d20c2631
+        uses: anthropics/claude-code-action@v1
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
           claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
           show_full_output: true
           use_sticky_comment: true
-          settings: |
-            {
-              "hooks": {
-                "PreToolUse": [
-                  {
-                    "matcher": "Bash(gh)",
-                    "hooks": [{"type": "auto_approve"}]
-                  }
-                ]
-              }
-            }
           prompt: |
             이 PR의 코드 변경사항을 검토하고 CLAUDE.md 가이드라인에 따라 리뷰해주세요.
 
