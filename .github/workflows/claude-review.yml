@@ -49,7 +49,35 @@ jobs:
             --allowedTools "mcp__github_inline_comment__create_inline_comment,Bash(gh pr comment:*),Bash(gh pr diff:*),Bash(gh pr view:*),Bash(gh api graphql:*)"
           prompt: |
             REPO: ${{ github.repository }}
-            PR NUMBER: ${{ github.event.pull_request.number }}
+            PR NUMBER: ${{ github.event.pull_request.number || github.event.issue.number }}
+            EVENT TYPE: ${{ github.event_name }}
+            USER COMMENT: ${{ github.event.comment.body || github.event.review.body || 'N/A' }}
+            COMMENT URL: ${{ github.event.comment.html_url || github.event.review.html_url || 'N/A' }}
+
+            ## 이벤트 유형별 처리
+
+            ### @claude 멘션된 경우 (issue_comment, pull_request_review_comment, pull_request_review)
+
+            사용자가 "@claude [요청]" 형태로 멘션했습니다. USER COMMENT를 확인하세요:
+
+            1. **코멘트 내용 확인**: 사용자가 무엇을 요청했는지 확인
+               - "리졸브해줘", "resolve", "이거 해결됐어" → 해당 thread를 resolved로 마크
+               - "다시 리뷰해줘", "review again" → 해당 코드 부분을 다시 리뷰
+               - 질문이나 요청 → 답변 제공
+
+            2. **요청 수행**:
+               - **Resolve 요청**:
+                 - 코드가 실제로 수정되었는지 확인
+                 - 수정되었다면: GraphQL mutation으로 thread resolve + "✅ 확인했습니다. [이슈]가 해결되었네요!" 답장
+                 - 아직 문제 있다면: "🔴 아직 [문제]가 남아있습니다: [설명]" 답장
+               - **리뷰 요청**: 해당 파일/라인 다시 분석 후 답장
+               - **질문**: 관련 코드를 분석해서 답변
+
+            3. **답장**: 반드시 사용자가 멘션한 코멘트에 답장하세요
+               - `gh pr comment` 명령으로 답변 (PR 전체 코멘트로 달립니다)
+               - 형식: "@[사용자이름] [답변 내용]" 형태로 멘션해서 답변
+
+            ### PR 자동 리뷰 (pull_request 이벤트)
 
             ## 작업 단계
 
