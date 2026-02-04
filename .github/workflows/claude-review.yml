@@ -46,25 +46,34 @@ jobs:
           show_full_output: true
           use_sticky_comment: true
           claude_args: |
-            --allowedTools "mcp__github_inline_comment__create_inline_comment,Bash(gh pr comment:*),Bash(gh pr diff:*),Bash(gh pr view:*)"
+            --allowedTools "mcp__github_inline_comment__create_inline_comment,Bash(gh pr comment:*),Bash(gh pr diff:*),Bash(gh pr view:*),Bash(gh api graphql:*)"
           prompt: |
             REPO: ${{ github.repository }}
             PR NUMBER: ${{ github.event.pull_request.number }}
 
             ## 작업 단계
 
-            1. **이전 리뷰 확인**: `gh pr view ${{ github.event.pull_request.number }} --comments` 명령으로 이전 코멘트를 확인하세요.
+            1. **이전 리뷰 스레드 확인**: GraphQL API로 review threads 조회
+               ```bash
+               gh api graphql -f query='query { repository(owner: "${{ github.repository_owner }}", name: "${{ github.event.repository.name }}") { pullRequest(number: ${{ github.event.pull_request.number }}) { reviewThreads(first: 50) { nodes { id isResolved comments(first: 1) { nodes { body path line } } } } } }'
+               ```
 
             2. **변경사항 분석**: 최신 커밋에서 이전에 지적된 이슈들이 수정되었는지 확인하세요.
 
-            3. **Follow-up 코멘트 작성**:
-               - 수정된 이슈가 있다면, 해당 이슈를 언급하며 "✅ 해결됨: [이슈 설명]" 형식으로 follow-up 코멘트를 작성하세요.
+            3. **해결된 스레드 Resolve**:
+               - 수정된 이슈가 있다면, GraphQL mutation으로 해당 thread를 resolve하세요:
+               ```bash
+               gh api graphql -f query='mutation { resolveReviewThread(input: {threadId: "THREAD_ID"}) { thread { isResolved } } }'
+               ```
+               - 그리고 해당 스레드에 "✅ 해결 확인됨: [수정 내용 설명]" 코멘트를 추가하세요.
+
+            4. **새 이슈 리뷰**:
                - 새로운 이슈가 발견되면 인라인 코멘트로 추가하세요.
 
-            4. **요약 코멘트**: 전체 리뷰 상태를 요약한 코멘트를 `gh pr comment`로 작성하세요.
-               - 해결된 이슈 목록
-               - 남은 이슈 목록
-               - 새로 발견된 이슈 목록
+            5. **요약 코멘트**: 전체 리뷰 상태를 요약한 코멘트를 `gh pr comment`로 작성하세요.
+               - ✅ 해결된 이슈 목록 (resolved로 마크됨)
+               - 🟡 남은 이슈 목록
+               - 🆕 새로 발견된 이슈 목록
 
             Use `gh pr comment` for top-level feedback.
             Use `mcp__github_inline_comment__create_inline_comment` to highlight specific code issues.
