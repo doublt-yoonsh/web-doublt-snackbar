@@ -2,8 +2,15 @@
 
 import { useState, useEffect } from 'react'
 
-// 🔴 Critical: any 타입 사용
-export default function BuggyComponent({ data }: any) {
+// ✅ Fixed: 명확한 타입 정의
+interface BuggyComponentProps {
+  data: {
+    userInput?: string;
+    items?: unknown[];
+  };
+}
+
+export default function BuggyComponent({ data }: BuggyComponentProps) {
   const [items, setItems] = useState([])
   const [count, setCount] = useState(0)
 
