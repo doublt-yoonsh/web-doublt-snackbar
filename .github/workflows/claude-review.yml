@@ -46,7 +46,7 @@ jobs:
           show_full_output: true
           use_sticky_comment: true
           claude_args: |
-            --allowedTools "mcp__github_inline_comment__create_inline_comment,Bash(gh pr comment:*),Bash(gh pr diff:*),Bash(gh pr view:*),Bash(gh api graphql:*)"
+            --allowedTools "mcp__github_inline_comment__create_inline_comment,Bash(gh pr comment:*),Bash(gh pr diff:*),Bash(gh pr view:*),Bash(gh pr review:*),Bash(gh api graphql:*)"
           prompt: |
             REPO: ${{ github.repository }}
             PR NUMBER: ${{ github.event.pull_request.number || github.event.issue.number }}
@@ -96,23 +96,65 @@ jobs:
                - ✅ **허용**: 새로 변경된 라인의 새로운 이슈만 코멘트
                - ✅ **허용**: 이전에 지적되었지만 수정된 이슈는 resolve + 확인 코멘트
 
-            4. **해결된 스레드 Resolve**:
-               - 수정된 이슈가 있다면, GraphQL mutation으로 해당 thread를 resolve하세요:
+            4. **해결된 스레드 Resolve (반드시 실행)**:
+               각 수정된 이슈마다 다음을 **반드시** 실행하세요:
+
+               a) GraphQL query로 모든 unresolved threads 조회:
                ```bash
-               gh api graphql -f query='mutation { resolveReviewThread(input: {threadId: "THREAD_ID"}) { thread { isResolved } } }'
+               gh api graphql -f query='query { repository(owner: "${{ github.repository_owner }}", name: "${{ github.event.repository.name }}") { pullRequest(number: ${{ github.event.pull_request.number }}) { reviewThreads(first: 100) { nodes { id isResolved path line comments(first: 1) { nodes { body } } } } } }' > /tmp/threads.json
                ```
-               - 그리고 해당 스레드에 "✅ 해결 확인됨: [수정 내용 설명]" 코멘트를 추가하세요.
+
+               b) 각 unresolved thread를 확인하고, 코드가 수정되었다면 resolve:
+               ```bash
+               # thread_id를 찾아서
+               gh api graphql -f query='mutation { resolveReviewThread(input: {threadId: "찾은_THREAD_ID"}) { thread { isResolved } } }'
+               ```
+
+               c) **중요**: isResolved가 true가 될 때까지 확인
 
             5. **새 이슈 리뷰**:
                - **오직 새로 변경된 코드에서 발견된 새로운 이슈만** 인라인 코멘트로 추가하세요.
                - 변경되지 않은 기존 코드의 이슈는 무시하세요.
 
-            6. **요약 코멘트**:
+            6. **요약 코멘트 및 PR 리뷰**:
                - **변경사항이 없거나 새로운 이슈가 없으면 요약 코멘트를 작성하지 마세요.**
                - 변경사항이 있을 때만 전체 리뷰 상태를 요약한 코멘트를 `gh pr comment`로 작성하세요:
                  - ✅ 해결된 이슈 목록 (resolved로 마크됨)
                  - 🟡 남은 이슈 목록 (이미 코멘트된 것은 제외)
                  - 🆕 새로 발견된 이슈 목록 (이번 커밋에서만)
+
+            7. **PR Review 제출 (매우 중요)**:
+               리뷰 완료 후 반드시 다음 중 하나를 실행하세요:
+
+               **A. Critical 이슈가 남아있는 경우:**
+               ```bash
+               gh pr review ${{ github.event.pull_request.number }} --request-changes --body "## 🔴 Changes Requested
+
+               다음 Critical 이슈들을 수정해주세요:
+               [Critical 이슈 목록]
+
+               수정 후 다시 리뷰하겠습니다."
+               ```
+
+               **B. Critical 이슈는 없지만 Warning이 있는 경우:**
+               ```bash
+               gh pr review ${{ github.event.pull_request.number }} --comment --body "## 💬 Review Comment
+
+               다음 사항들을 확인해주세요:
+               [Warning/Suggestion 목록]"
+               ```
+
+               **C. 모든 이슈가 해결된 경우:**
+               ```bash
+               gh pr review ${{ github.event.pull_request.number }} --approve --body "## ✅ Approved
+
+               모든 Critical 이슈가 해결되었습니다!
+
+               ✅ 해결된 이슈:
+               [해결된 이슈 목록]
+
+               코드 품질: [점수]/10"
+               ```
 
             Use `gh pr comment` for top-level feedback.
             Use `mcp__github_inline_comment__create_inline_comment` to highlight specific code issues.
