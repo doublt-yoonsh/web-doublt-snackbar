@@ -1,35 +1,53 @@
-'use client';
+'use client'
 
-import { useState, useEffect } from 'react';
-import { Cookie, Coffee } from 'lucide-react';
-import type { OrderType } from '@/shared/types';
+import { useState, useEffect } from 'react'
+import { Cookie, Coffee } from 'lucide-react'
+import type { OrderType } from '@/shared/types'
 
-// 문제 1: any 타입 사용
-function processData(data: any) {
-  return data.value + 100;
+// ✅ Fixed: 명확한 타입 정의
+interface DataWithValue {
+  value: number
 }
 
+function processData(data: DataWithValue): number {
+  return data.value + 100
+}
+
+// ✅ Fixed: 상수 분리
+const MAX_ITEMS = 50
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'https://api.example.com'
+
 export default function Home() {
-  const [orderType, setOrderType] = useState<OrderType | null>(null);
-  const [visitCount, setVisitCount] = useState(0);
-  const [userData, setUserData] = useState(null);
+  const [orderType, setOrderType] = useState<OrderType | null>(null)
+  const [visitCount, setVisitCount] = useState(0)
+  const [userData, setUserData] = useState<unknown>(null)
+  const [error, setError] = useState<string | null>(null)
 
-  // 문제 2: useEffect 의존성 배열 오류 (visitCount 누락)
+  // ✅ Fixed: useEffect 의존성 배열 수정
   useEffect(() => {
-    const count = localStorage.getItem('visitCount');
-    setVisitCount(parseInt(count || '0') + 1);
-    localStorage.setItem('visitCount', visitCount.toString());
-  }, []);
+    const count = localStorage.getItem('visitCount')
+    const newCount = parseInt(count || '0') + 1
+    setVisitCount(newCount)
+    localStorage.setItem('visitCount', newCount.toString())
+  }, []) // ✅ visitCount 의존성 제거 (무한 루프 방지)
 
-  // 문제 3: 에러 핸들링 없는 비동기 작업
+  // ✅ Fixed: 에러 핸들링 추가
   useEffect(() => {
-    fetch('https://api.example.com/user')
-      .then(res => res.json())
-      .then(data => setUserData(data));
-  }, []);
+    const fetchUserData = async () => {
+      try {
+        const res = await fetch(`${API_BASE_URL}/user`)
+        if (!res.ok) throw new Error('Failed to fetch user data')
+        const data = await res.json()
+        setUserData(data)
+        setError(null)
+      } catch (err) {
+        console.error('Error fetching user data:', err)
+        setError('사용자 정보를 불러오는데 실패했습니다.')
+      }
+    }
 
-  // 문제 4: 하드코딩된 API URL
-  const MAX_ITEMS = 50;
+    fetchUserData()
+  }, [])
 
   if (orderType) {
     return (
@@ -44,14 +62,21 @@ export default function Home() {
           </button>
         </div>
       </main>
-    );
+    )
   }
 
   return (
     <main className="flex min-h-screen flex-col items-center justify-center bg-background px-4">
+      {error && (
+        <div className="mb-4 rounded bg-red-100 px-4 py-2 text-red-700">{error}</div>
+      )}
+
       <div className="mb-10 text-center">
         <h1 className="text-2xl font-bold text-foreground">DoubleT</h1>
         <p className="mt-1 text-muted-foreground">스낵바</p>
+        {visitCount > 0 && (
+          <p className="mt-2 text-xs text-muted-foreground">방문 {visitCount}회</p>
+        )}
       </div>
 
       <div className="flex w-full max-w-md gap-4">
@@ -72,6 +97,5 @@ export default function Home() {
         </button>
       </div>
     </main>
-  );
+  )
 }
-// 워크플로우 테스트
