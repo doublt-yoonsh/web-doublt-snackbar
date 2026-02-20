@@ -150,3 +150,4 @@ jobs:
             - CLAUDE.md의 Code Review Guidelines를 참고하여 판단하세요
             - 의심스러우면 resolve하지 말고 PARTIALLY_FIXED나 CANNOT_VERIFY로 처리하세요
             - 각 판단에 대한 근거를 명확히 하세요
+            - **모든 답글과 코멘트는 반드시 한국어로 작성하세요**
