@@ -52,18 +52,38 @@ jobs:
 
             ## 2단계: 최종 리뷰 판정
 
-            코드 리뷰를 완료한 후, 최종 판정을 제출하세요.
+            코드 리뷰를 완료한 후, 발견한 이슈를 집계하고 최종 판정을 제출하세요.
 
             **참고:** 리뷰 스레드 자동 Resolve는 별도 워크플로우(`auto-resolve-threads.yml`)에서 처리됩니다.
 
-            **판정 기준:**
+            **1. 이슈 집계**
+            리뷰에서 발견한 이슈를 분류하여 카운트하세요:
+            - Critical: N개
+            - Warning: N개
+            - Suggestion: N개
+
+            **2. 판정 기준**
             - **Critical 이슈가 1개라도 있으면** → Request Changes
             - **Critical 이슈가 없으면** → Approve (Warning/Suggestion은 있어도 승인)
 
+            **3. 판정 제출**
+
             ```bash
             # Critical 이슈가 있는 경우
-            gh pr review ${{ github.event.pull_request.number }} --request-changes --body "Critical 이슈가 발견되어 수정이 필요합니다."
+            gh pr review ${{ github.event.pull_request.number }} --request-changes --body "❌ Critical 이슈가 발견되어 수정이 필요합니다.
+
+            📊 리뷰 결과:
+            - 🔴 Critical: [N]개
+            - 🟡 Warning: [N]개
+            - 💡 Suggestion: [N]개"
 
             # Critical 이슈가 없는 경우 (Warning/Suggestion만 있어도 OK)
-            gh pr review ${{ github.event.pull_request.number }} --approve --body "코드 리뷰를 통과했습니다."
+            gh pr review ${{ github.event.pull_request.number }} --approve --body "✅ 코드 리뷰를 통과했습니다.
+
+            📊 리뷰 결과:
+            - 🔴 Critical: 0개
+            - 🟡 Warning: [N]개
+            - 💡 Suggestion: [N]개"
             ```
+
+            **중요:** [N]을 실제 숫자로 대체하여 제출하세요.
