@@ -19,8 +19,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/shared/components/ui
 import { Package, Send, Loader2, Plus, X, Download } from "lucide-react";
 import { toast } from "sonner";
 import { DEPARTMENTS } from "@/shared/constants/departments";
-
-const API_BASE = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8080";
+import { API_BASE } from "@/shared/constants/api";
 
 const supplyFormSchema = z.object({
   name: z.string().min(1, "이름을 입력해주세요"),

@@ -25,8 +25,7 @@ import { DEPARTMENTS } from "@/shared/constants/departments";
 import { ORDER_STATUSES, ORDER_TYPE_LABELS } from "@/shared/constants/order-status";
 import { cn } from "@/shared/lib/utils";
 import type { OrderResponse } from "@/shared/types";
-
-const API_BASE = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8080";
+import { API_BASE } from "@/shared/constants/api";
 
 function getStatusOption(status: string) {
   return ORDER_STATUSES.find((s) => s.value === status);

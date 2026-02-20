@@ -1,8 +1,7 @@
 "use client";
 
 import { useState, useCallback } from "react";
-
-const API_BASE = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8080";
+import { API_BASE } from "@/shared/constants/api";
 const TOKEN_KEY = "admin_token";
 
 export function useAdminAuth() {

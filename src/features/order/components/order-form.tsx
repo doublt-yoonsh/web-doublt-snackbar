@@ -20,8 +20,7 @@ import { Cookie, Coffee, Send, Loader2, Plus, X, Link, Download } from "lucide-r
 import { toast } from "sonner";
 import { DEPARTMENTS } from "@/shared/constants/departments";
 import { cn } from "@/shared/lib/utils";
-
-const API_BASE = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8080";
+import { API_BASE } from "@/shared/constants/api";
 
 const orderFormSchema = z.object({
   name: z.string().min(1, "이름을 입력해주세요"),

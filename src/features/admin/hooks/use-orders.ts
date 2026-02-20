@@ -5,8 +5,7 @@ import { toast } from "sonner";
 import type { OrderResponse, OrderStatus } from "@/shared/types";
 import type { AdminFilters } from "../types";
 import { getAdminToken } from "./use-admin-auth";
-
-const API_BASE = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8080";
+import { API_BASE } from "@/shared/constants/api";
 
 export function useOrders() {
   const [orders, setOrders] = useState<OrderResponse[]>([]);
