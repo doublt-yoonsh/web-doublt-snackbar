@@ -38,3 +38,4 @@ next-env.d.ts
 # backend build artifacts
 backend/.gradle/
 backend/build/
+backend/src/main/resources/application-local.yml
