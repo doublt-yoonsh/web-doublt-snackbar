@@ -4,6 +4,7 @@ import { useState, useCallback } from "react";
 import { toast } from "sonner";
 import type { OrderResponse, OrderStatus } from "@/shared/types";
 import type { AdminFilters } from "../types";
+import { getAdminToken } from "./use-admin-auth";
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8080";
 
@@ -47,9 +48,13 @@ export function useOrders() {
 
   const updateStatus = useCallback(async (orderId: number, status: OrderStatus) => {
     try {
+      const token = getAdminToken();
       const res = await fetch(`${API_BASE}/api/orders/${orderId}/status`, {
         method: "PATCH",
-        headers: { "Content-Type": "application/json" },
+        headers: {
+          "Content-Type": "application/json",
+          ...(token && { Authorization: `Bearer ${token}` }),
+        },
         body: JSON.stringify({ status }),
       });
       if (!res.ok) throw new Error("상태 변경에 실패했습니다");

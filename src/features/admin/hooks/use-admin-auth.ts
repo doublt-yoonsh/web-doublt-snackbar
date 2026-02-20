@@ -3,9 +3,13 @@
 import { useState, useCallback } from "react";
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8080";
+const TOKEN_KEY = "admin_token";
 
 export function useAdminAuth() {
-  const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [isAuthenticated, setIsAuthenticated] = useState(() => {
+    if (typeof window === "undefined") return false;
+    return !!sessionStorage.getItem(TOKEN_KEY);
+  });
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -22,6 +26,8 @@ export function useAdminAuth() {
         setError("비밀번호가 올바르지 않습니다");
         return false;
       }
+      const data = await res.json();
+      sessionStorage.setItem(TOKEN_KEY, data.token);
       setIsAuthenticated(true);
       return true;
     } catch {
@@ -33,8 +39,14 @@ export function useAdminAuth() {
   }, []);
 
   const logout = useCallback(() => {
+    sessionStorage.removeItem(TOKEN_KEY);
     setIsAuthenticated(false);
   }, []);
 
   return { isAuthenticated, isLoading, error, login, logout };
+}
+
+export function getAdminToken(): string | null {
+  if (typeof window === "undefined") return null;
+  return sessionStorage.getItem(TOKEN_KEY);
 }
