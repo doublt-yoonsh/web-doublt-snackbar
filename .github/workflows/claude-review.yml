@@ -50,51 +50,11 @@ jobs:
 
             반드시 발견한 모든 이슈를 구체적으로 지적하고, 파일명과 줄번호를 명시해주세요.
 
-            ## 2단계: 해결된 리뷰 스레드 자동 Resolve
+            ## 2단계: 최종 리뷰 판정
 
-            코드 리뷰를 완료한 후, 이 PR의 열려있는 리뷰 스레드를 확인하고 해결된 것은 자동으로 Resolve 해주세요.
+            코드 리뷰를 완료한 후, 최종 판정을 제출하세요.
 
-            1. 아래 GraphQL 쿼리로 열려있는 리뷰 스레드를 조회하세요:
-            ```
-            gh api graphql -f query='
-              query {
-                repository(owner: "${{ github.repository_owner }}", name: "${{ github.event.repository.name }}") {
-                  pullRequest(number: ${{ github.event.pull_request.number }}) {
-                    reviewThreads(first: 100) {
-                      nodes {
-                        id
-                        isResolved
-                        comments(first: 1) {
-                          nodes {
-                            body
-                            path
-                            line
-                          }
-                        }
-                      }
-                    }
-                  }
-                }
-              }'
-            ```
-
-            2. 각 미해결 스레드에 대해 해당 파일의 현재 코드를 읽고, 지적된 이슈가 수정되었는지 판단하세요.
-
-            3. 이슈가 해결된 스레드는 아래 mutation으로 Resolve 하세요:
-            ```
-            gh api graphql -f query='
-              mutation {
-                resolveReviewThread(input: {threadId: "THREAD_ID"}) {
-                  thread { isResolved }
-                }
-              }'
-            ```
-
-            4. Resolve한 스레드에는 "이슈가 수정되어 자동으로 Resolve 합니다." 라고 답글을 달아주세요.
-
-            ## 3단계: 최종 리뷰 판정
-
-            모든 리뷰와 Resolve 작업을 완료한 후, 최종 판정을 제출하세요.
+            **참고:** 리뷰 스레드 자동 Resolve는 별도 워크플로우(`auto-resolve-threads.yml`)에서 처리됩니다.
 
             - Critical 이슈가 남아있으면:
               `gh pr review ${{ github.event.pull_request.number }} --request-changes --body "Critical 이슈가 발견되어 수정이 필요합니다."`
