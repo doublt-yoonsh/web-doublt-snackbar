@@ -24,13 +24,25 @@ jobs:
         uses: anthropics/claude-code-action@v1
         with:
           claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
-          plugin_marketplaces: 'https://github.com/anthropics/claude-code.git'
-          plugins: 'code-review@claude-code-plugins'
-          claude_args: '--allowedTools "Bash(gh api:*),Bash(gh pr:*)"'
+          show_full_output: true
+          use_sticky_comment: true
+          claude_args: |
+            --allowedTools "mcp__github_inline_comment__create_inline_comment,Bash(gh api:*),Bash(gh pr:*)"
           prompt: |
-            /code-review:code-review ${{ github.repository }}/pull/${{ github.event.pull_request.number }}
+            REPO: ${{ github.repository }}
+            PR NUMBER: ${{ github.event.pull_request.number }}
 
-            ## 추가 작업: 해결된 리뷰 스레드 자동 Resolve
+            ## 1단계: 코드 리뷰
+
+            CLAUDE.md의 Code Review Guidelines를 참고하여 이 PR의 코드 변경사항을 리뷰해주세요.
+
+            1. `gh pr diff ${{ github.event.pull_request.number }}`로 변경사항을 확인하세요.
+            2. 각 이슈를 발견하면 `mcp__github_inline_comment__create_inline_comment` 도구를 사용하여 해당 코드 라인에 인라인 리뷰 코멘트를 달아주세요.
+            3. 전체 리뷰 요약은 `gh pr comment ${{ github.event.pull_request.number }}`로 PR에 코멘트로 작성해주세요.
+
+            반드시 발견한 모든 이슈를 구체적으로 지적하고, 파일명과 줄번호를 명시해주세요.
+
+            ## 2단계: 해결된 리뷰 스레드 자동 Resolve
 
             코드 리뷰를 완료한 후, 이 PR의 열려있는 리뷰 스레드를 확인하고 해결된 것은 자동으로 Resolve 해주세요.
 
@@ -71,3 +83,14 @@ jobs:
             ```
 
             4. Resolve한 스레드에는 "이슈가 수정되어 자동으로 Resolve 합니다." 라고 답글을 달아주세요.
+
+            ## 3단계: 최종 리뷰 판정
+
+            모든 리뷰와 Resolve 작업을 완료한 후, 최종 판정을 제출하세요.
+
+            - Critical 이슈가 남아있으면:
+              `gh pr review ${{ github.event.pull_request.number }} --request-changes --body "Critical 이슈가 발견되어 수정이 필요합니다."`
+            - Critical 이슈 없이 Warning/Suggestion만 있으면:
+              `gh pr review ${{ github.event.pull_request.number }} --comment --body "몇 가지 개선 사항이 있지만 Critical 이슈는 없습니다."`
+            - 이슈가 없거나 모두 해결되었으면:
+              `gh pr review ${{ github.event.pull_request.number }} --approve --body "코드 리뷰를 통과했습니다."`
