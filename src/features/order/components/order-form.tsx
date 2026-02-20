@@ -1,6 +1,9 @@
 "use client";
 
 import { useState } from "react";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { z } from "zod";
 import { Button } from "@/shared/components/ui/button";
 import { Input } from "@/shared/components/ui/input";
 import { Label } from "@/shared/components/ui/label";
@@ -20,20 +23,36 @@ import { cn } from "@/shared/lib/utils";
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8080";
 
+const orderFormSchema = z.object({
+  name: z.string().min(1, "이름을 입력해주세요"),
+  department: z.string().min(1, "부서를 선택해주세요"),
+  note: z.string().optional(),
+});
+
+type OrderFormValues = z.infer<typeof orderFormSchema>;
+
 interface OrderFormProps {
   onBack: () => void;
 }
 
 export function OrderForm({ onBack }: OrderFormProps) {
   const [orderType, setOrderType] = useState<"snack" | "breakfast">("snack");
-  const [items, setItems] = useState<{ link: string; productName: string }[]>([
-    { link: "", productName: "" },
+  const [items, setItems] = useState<{ id: string; link: string; productName: string }[]>([
+    { id: crypto.randomUUID(), link: "", productName: "" },
   ]);
-  const [name, setName] = useState("");
-  const [department, setDepartment] = useState("");
-  const [note, setNote] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [fetchingIndex, setFetchingIndex] = useState<number | null>(null);
+
+  const {
+    register,
+    handleSubmit,
+    setValue,
+    reset,
+    formState: { errors },
+  } = useForm<OrderFormValues>({
+    resolver: zodResolver(orderFormSchema),
+    defaultValues: { name: "", department: "", note: "" },
+  });
 
   const updateItem = (index: number, field: "link" | "productName", value: string) => {
     setItems((prev) =>
@@ -42,7 +61,7 @@ export function OrderForm({ onBack }: OrderFormProps) {
   };
 
   const addItem = () => {
-    setItems((prev) => [...prev, { link: "", productName: "" }]);
+    setItems((prev) => [...prev, { id: crypto.randomUUID(), link: "", productName: "" }]);
   };
 
   const removeItem = (index: number) => {
@@ -77,16 +96,7 @@ export function OrderForm({ onBack }: OrderFormProps) {
     }
   };
 
-  const handleSubmit = async () => {
-    if (!name.trim()) {
-      toast.error("이름을 입력해주세요");
-      return;
-    }
-    if (!department) {
-      toast.error("부서를 선택해주세요");
-      return;
-    }
-
+  const onSubmit = async (data: OrderFormValues) => {
     const validItems = items.filter((item) => item.link.trim());
     if (validItems.length === 0) {
       toast.error("최소 1개 이상의 쿠팡 링크를 입력해주세요");
@@ -101,9 +111,9 @@ export function OrderForm({ onBack }: OrderFormProps) {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           type: orderType,
-          name: name.trim(),
-          department,
-          note: note.trim() || null,
+          name: data.name.trim(),
+          department: data.department,
+          note: data.note?.trim() || null,
           items: validItems.map((item) => ({
             link: item.link.trim(),
             productName: item.productName.trim() || "상품명 없음",
@@ -117,10 +127,8 @@ export function OrderForm({ onBack }: OrderFormProps) {
         .map((item) => item.productName.trim() || "상품명 없음")
         .join(", ");
 
-      setItems([{ link: "", productName: "" }]);
-      setName("");
-      setDepartment("");
-      setNote("");
+      setItems([{ id: crypto.randomUUID(), link: "", productName: "" }]);
+      reset();
       onBack();
 
       setTimeout(() => {
@@ -175,7 +183,7 @@ export function OrderForm({ onBack }: OrderFormProps) {
         </CardHeader>
         <CardContent className="space-y-4">
           {items.map((item, index) => (
-            <div key={index} className="space-y-2 rounded-lg border p-3">
+            <div key={item.id} className="space-y-2 rounded-lg border p-3">
               <div className="flex items-center justify-between">
                 <span className="text-sm font-medium text-muted-foreground">
                   상품 {index + 1}
@@ -239,7 +247,7 @@ export function OrderForm({ onBack }: OrderFormProps) {
           <div className="flex gap-3">
             <div className="space-y-2">
               <Label htmlFor="department">부서</Label>
-              <Select value={department} onValueChange={setDepartment}>
+              <Select onValueChange={(value) => setValue("department", value, { shouldValidate: true })}>
                 <SelectTrigger id="department">
                   <SelectValue placeholder="부서 선택" />
                 </SelectTrigger>
@@ -251,15 +259,20 @@ export function OrderForm({ onBack }: OrderFormProps) {
                   ))}
                 </SelectContent>
               </Select>
+              {errors.department && (
+                <p className="text-sm text-destructive">{errors.department.message}</p>
+              )}
             </div>
             <div className="flex-1 space-y-2">
               <Label htmlFor="name">이름</Label>
               <Input
                 id="name"
                 placeholder="홍길동"
-                value={name}
-                onChange={(e) => setName(e.target.value)}
+                {...register("name")}
               />
+              {errors.name && (
+                <p className="text-sm text-destructive">{errors.name.message}</p>
+              )}
             </div>
           </div>
           <div className="space-y-2">
@@ -267,8 +280,7 @@ export function OrderForm({ onBack }: OrderFormProps) {
             <Textarea
               id="note"
               placeholder="기타 요청사항을 입력해주세요."
-              value={note}
-              onChange={(e) => setNote(e.target.value)}
+              {...register("note")}
               className="min-h-[60px] resize-none"
             />
           </div>
@@ -278,7 +290,7 @@ export function OrderForm({ onBack }: OrderFormProps) {
       <Button
         size="lg"
         className="w-full"
-        onClick={handleSubmit}
+        onClick={handleSubmit(onSubmit)}
         disabled={isSubmitting}
       >
         {isSubmitting ? (

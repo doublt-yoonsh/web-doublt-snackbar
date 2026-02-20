@@ -1,6 +1,9 @@
 "use client";
 
 import { useState } from "react";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { z } from "zod";
 import { Button } from "@/shared/components/ui/button";
 import { Input } from "@/shared/components/ui/input";
 import { Label } from "@/shared/components/ui/label";
@@ -19,7 +22,16 @@ import { DEPARTMENTS } from "@/shared/constants/departments";
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8080";
 
+const supplyFormSchema = z.object({
+  name: z.string().min(1, "이름을 입력해주세요"),
+  department: z.string().min(1, "부서를 선택해주세요"),
+  note: z.string().min(1, "신청 사유를 입력해주세요"),
+});
+
+type SupplyFormValues = z.infer<typeof supplyFormSchema>;
+
 interface SupplyItem {
+  id: string;
   productName: string;
   quantity: number;
   link: string;
@@ -31,22 +43,30 @@ interface SupplyFormProps {
 
 export function SupplyForm({ onBack }: SupplyFormProps) {
   const [items, setItems] = useState<SupplyItem[]>([
-    { productName: "", quantity: 1, link: "" },
+    { id: crypto.randomUUID(), productName: "", quantity: 1, link: "" },
   ]);
-  const [name, setName] = useState("");
-  const [department, setDepartment] = useState("");
-  const [note, setNote] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [fetchingIndex, setFetchingIndex] = useState<number | null>(null);
 
-  const updateItem = (index: number, field: keyof SupplyItem, value: string | number) => {
+  const {
+    register,
+    handleSubmit,
+    setValue,
+    reset,
+    formState: { errors },
+  } = useForm<SupplyFormValues>({
+    resolver: zodResolver(supplyFormSchema),
+    defaultValues: { name: "", department: "", note: "" },
+  });
+
+  const updateItem = (index: number, field: keyof Omit<SupplyItem, "id">, value: string | number) => {
     setItems((prev) =>
       prev.map((item, i) => (i === index ? { ...item, [field]: value } : item))
     );
   };
 
   const addItem = () => {
-    setItems((prev) => [...prev, { productName: "", quantity: 1, link: "" }]);
+    setItems((prev) => [...prev, { id: crypto.randomUUID(), productName: "", quantity: 1, link: "" }]);
   };
 
   const removeItem = (index: number) => {
@@ -79,23 +99,10 @@ export function SupplyForm({ onBack }: SupplyFormProps) {
     }
   };
 
-  const handleSubmit = async () => {
-    if (!name.trim()) {
-      toast.error("이름을 입력해주세요");
-      return;
-    }
-    if (!department) {
-      toast.error("부서를 선택해주세요");
-      return;
-    }
-
+  const onSubmit = async (data: SupplyFormValues) => {
     const validItems = items.filter((item) => item.productName.trim());
     if (validItems.length === 0) {
       toast.error("최소 1개 이상의 비품명을 입력해주세요");
-      return;
-    }
-    if (!note.trim()) {
-      toast.error("신청 사유를 입력해주세요");
       return;
     }
 
@@ -107,9 +114,9 @@ export function SupplyForm({ onBack }: SupplyFormProps) {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           type: "supply",
-          name: name.trim(),
-          department,
-          note: note.trim(),
+          name: data.name.trim(),
+          department: data.department,
+          note: data.note.trim(),
           items: validItems.map((item) => ({
             productName: item.productName.trim(),
             quantity: item.quantity,
@@ -124,10 +131,8 @@ export function SupplyForm({ onBack }: SupplyFormProps) {
         .map((item) => item.productName.trim())
         .join(", ");
 
-      setItems([{ productName: "", quantity: 1, link: "" }]);
-      setName("");
-      setDepartment("");
-      setNote("");
+      setItems([{ id: crypto.randomUUID(), productName: "", quantity: 1, link: "" }]);
+      reset();
       onBack();
 
       setTimeout(() => {
@@ -158,7 +163,7 @@ export function SupplyForm({ onBack }: SupplyFormProps) {
         </CardHeader>
         <CardContent className="space-y-4">
           {items.map((item, index) => (
-            <div key={index} className="space-y-2 rounded-lg border p-3">
+            <div key={item.id} className="space-y-2 rounded-lg border p-3">
               <div className="flex items-center justify-between">
                 <span className="text-sm font-medium text-muted-foreground">
                   비품 {index + 1}
@@ -235,7 +240,7 @@ export function SupplyForm({ onBack }: SupplyFormProps) {
           <div className="flex gap-3">
             <div className="space-y-2">
               <Label htmlFor="supply-department">부서</Label>
-              <Select value={department} onValueChange={setDepartment}>
+              <Select onValueChange={(value) => setValue("department", value, { shouldValidate: true })}>
                 <SelectTrigger id="supply-department">
                   <SelectValue placeholder="부서 선택" />
                 </SelectTrigger>
@@ -247,15 +252,20 @@ export function SupplyForm({ onBack }: SupplyFormProps) {
                   ))}
                 </SelectContent>
               </Select>
+              {errors.department && (
+                <p className="text-sm text-destructive">{errors.department.message}</p>
+              )}
             </div>
             <div className="flex-1 space-y-2">
               <Label htmlFor="supply-name">이름</Label>
               <Input
                 id="supply-name"
                 placeholder="홍길동"
-                value={name}
-                onChange={(e) => setName(e.target.value)}
+                {...register("name")}
               />
+              {errors.name && (
+                <p className="text-sm text-destructive">{errors.name.message}</p>
+              )}
             </div>
           </div>
           <div className="space-y-2">
@@ -263,10 +273,12 @@ export function SupplyForm({ onBack }: SupplyFormProps) {
             <Textarea
               id="supply-note"
               placeholder="비품 신청 사유를 입력해주세요."
-              value={note}
-              onChange={(e) => setNote(e.target.value)}
+              {...register("note")}
               className="min-h-[80px] resize-none"
             />
+            {errors.note && (
+              <p className="text-sm text-destructive">{errors.note.message}</p>
+            )}
           </div>
         </CardContent>
       </Card>
@@ -274,7 +286,7 @@ export function SupplyForm({ onBack }: SupplyFormProps) {
       <Button
         size="lg"
         className="w-full"
-        onClick={handleSubmit}
+        onClick={handleSubmit(onSubmit)}
         disabled={isSubmitting}
       >
         {isSubmitting ? (
