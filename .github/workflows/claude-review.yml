@@ -56,9 +56,14 @@ jobs:
 
             **참고:** 리뷰 스레드 자동 Resolve는 별도 워크플로우(`auto-resolve-threads.yml`)에서 처리됩니다.
 
-            - Critical 이슈가 남아있으면:
-              `gh pr review ${{ github.event.pull_request.number }} --request-changes --body "Critical 이슈가 발견되어 수정이 필요합니다."`
-            - Critical 이슈 없이 Warning/Suggestion만 있으면:
-              `gh pr review ${{ github.event.pull_request.number }} --comment --body "몇 가지 개선 사항이 있지만 Critical 이슈는 없습니다."`
-            - 이슈가 없거나 모두 해결되었으면:
-              `gh pr review ${{ github.event.pull_request.number }} --approve --body "코드 리뷰를 통과했습니다."`
+            **판정 기준:**
+            - **Critical 이슈가 1개라도 있으면** → Request Changes
+            - **Critical 이슈가 없으면** → Approve (Warning/Suggestion은 있어도 승인)
+
+            ```bash
+            # Critical 이슈가 있는 경우
+            gh pr review ${{ github.event.pull_request.number }} --request-changes --body "Critical 이슈가 발견되어 수정이 필요합니다."
+
+            # Critical 이슈가 없는 경우 (Warning/Suggestion만 있어도 OK)
+            gh pr review ${{ github.event.pull_request.number }} --approve --body "코드 리뷰를 통과했습니다."
+            ```
