@@ -16,6 +16,25 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    const ALLOWED_DOMAINS = ["www.coupang.com", "m.coupang.com"];
+    try {
+      const parsed = new URL(url);
+      if (
+        parsed.protocol !== "https:" ||
+        !ALLOWED_DOMAINS.some((d) => parsed.hostname === d)
+      ) {
+        return NextResponse.json(
+          { error: "쿠팡 URL만 허용됩니다" },
+          { status: 400 }
+        );
+      }
+    } catch {
+      return NextResponse.json(
+        { error: "올바른 URL 형식이 아닙니다" },
+        { status: 400 }
+      );
+    }
+
     const scriptPath = path.join(process.cwd(), "scripts", "fetch-product.mjs");
     const { stdout } = await execFileAsync("node", [scriptPath, url], {
       timeout: 15000,

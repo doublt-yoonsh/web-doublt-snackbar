@@ -1,0 +1,73 @@
+name: Claude Code Review
+
+on:
+  pull_request:
+    types: [opened, synchronize, ready_for_review, reopened]
+
+jobs:
+  claude-review:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: write
+      issues: write
+      id-token: write
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+
+      - name: Run Claude Code Review
+        id: claude-review
+        uses: anthropics/claude-code-action@v1
+        with:
+          claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+          plugin_marketplaces: 'https://github.com/anthropics/claude-code.git'
+          plugins: 'code-review@claude-code-plugins'
+          claude_args: '--allowedTools "Bash(gh api:*),Bash(gh pr:*)"'
+          prompt: |
+            /code-review:code-review ${{ github.repository }}/pull/${{ github.event.pull_request.number }}
+
+            ## 추가 작업: 해결된 리뷰 스레드 자동 Resolve
+
+            코드 리뷰를 완료한 후, 이 PR의 열려있는 리뷰 스레드를 확인하고 해결된 것은 자동으로 Resolve 해주세요.
+
+            1. 아래 GraphQL 쿼리로 열려있는 리뷰 스레드를 조회하세요:
+            ```
+            gh api graphql -f query='
+              query {
+                repository(owner: "${{ github.repository_owner }}", name: "${{ github.event.repository.name }}") {
+                  pullRequest(number: ${{ github.event.pull_request.number }}) {
+                    reviewThreads(first: 100) {
+                      nodes {
+                        id
+                        isResolved
+                        comments(first: 1) {
+                          nodes {
+                            body
+                            path
+                            line
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              }'
+            ```
+
+            2. 각 미해결 스레드에 대해 해당 파일의 현재 코드를 읽고, 지적된 이슈가 수정되었는지 판단하세요.
+
+            3. 이슈가 해결된 스레드는 아래 mutation으로 Resolve 하세요:
+            ```
+            gh api graphql -f query='
+              mutation {
+                resolveReviewThread(input: {threadId: "THREAD_ID"}) {
+                  thread { isResolved }
+                }
+              }'
+            ```
+
+            4. Resolve한 스레드에는 "이슈가 수정되어 자동으로 Resolve 합니다." 라고 답글을 달아주세요.
