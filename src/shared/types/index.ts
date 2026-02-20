@@ -1,12 +1,8 @@
-export type OrderType = 'snack' | 'breakfast';
+export type OrderType = 'snack' | 'breakfast' | 'supply';
 
 export type Department =
-  | 'dev'
-  | 'design'
-  | 'marketing'
-  | 'sales'
-  | 'hr'
-  | 'finance';
+  | 'strategy'
+  | 'dev';
 
 export interface MenuItem {
   id: string;
@@ -32,4 +28,24 @@ export interface OrderFormData {
   name: string;
   department: Department;
   note: string;
+}
+
+export type OrderStatus = 'PENDING' | 'PROCESSING' | 'COMPLETED';
+
+export interface OrderItemResponse {
+  id: number;
+  link: string | null;
+  productName: string;
+  quantity: number;
+}
+
+export interface OrderResponse {
+  id: number;
+  type: string;
+  name: string;
+  department: string;
+  note: string | null;
+  status: OrderStatus;
+  createdAt: string;
+  items: OrderItemResponse[];
 }
