@@ -4,6 +4,10 @@ on:
   pull_request:
     types: [synchronize]  # PR이 업데이트될 때만 실행
 
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
 jobs:
   auto-resolve:
     runs-on: ubuntu-latest
