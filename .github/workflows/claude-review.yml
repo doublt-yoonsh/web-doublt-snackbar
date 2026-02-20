@@ -39,6 +39,7 @@ jobs:
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
           claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+          show_full_output: true
           prompt: |
             .github/review-guidelines.md 파일을 읽고 해당 기준에 따라 이 PR의 코드 변경사항을 리뷰해주세요.
             반드시 발견한 모든 이슈를 구체적으로 지적하고, 파일명과 줄번호를 명시해주세요.
