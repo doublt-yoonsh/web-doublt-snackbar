@@ -8,6 +8,7 @@ export interface OrderStatusOption {
 
 export const ORDER_STATUSES: OrderStatusOption[] = [
   { value: 'PENDING', label: '대기중', color: 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200' },
+  { value: 'PROCESSING', label: '처리중', color: 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200' },
   { value: 'COMPLETED', label: '완료', color: 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200' },
 ];
 
