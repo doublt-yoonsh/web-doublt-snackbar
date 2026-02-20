@@ -1,24 +1,56 @@
-'use client';
+"use client";
 
-import { useState } from 'react';
-import { Cookie, Coffee } from 'lucide-react';
-import type { OrderType } from '@/shared/types';
+import { useState } from "react";
+import { Cookie, Package, ClipboardList, ArrowLeft } from "lucide-react";
+import { Button } from "@/shared/components/ui/button";
+import { OrderForm } from "@/features/order/components/order-form";
+import { SupplyForm } from "@/features/order/components/supply-form";
+import { MyOrders } from "@/features/order/components/my-orders";
+import { Toaster } from "sonner";
+
+type View = "home" | "order" | "supply" | "my-orders";
 
 export default function Home() {
-  const [orderType, setOrderType] = useState<OrderType | null>(null);
+  const [view, setView] = useState<View>("home");
 
-  if (orderType) {
+  if (view === "order" || view === "supply") {
     return (
       <main className="min-h-screen bg-background">
         <div className="mx-auto max-w-lg px-4 py-6">
-          <p className="text-center">Order form will go here for: {orderType}</p>
-          <button
-            onClick={() => setOrderType(null)}
-            className="mt-4 rounded bg-primary px-4 py-2 text-white"
+          <Button
+            variant="ghost"
+            onClick={() => setView("home")}
+            className="mb-4 gap-2"
           >
+            <ArrowLeft className="h-4 w-4" />
             돌아가기
-          </button>
+          </Button>
+          {view === "supply" ? (
+            <SupplyForm onBack={() => setView("home")} />
+          ) : (
+            <OrderForm onBack={() => setView("home")} />
+          )}
         </div>
+        <Toaster />
+      </main>
+    );
+  }
+
+  if (view === "my-orders") {
+    return (
+      <main className="min-h-screen bg-background">
+        <div className="mx-auto max-w-lg px-4 py-6">
+          <Button
+            variant="ghost"
+            onClick={() => setView("home")}
+            className="mb-4 gap-2"
+          >
+            <ArrowLeft className="h-4 w-4" />
+            돌아가기
+          </Button>
+          <MyOrders />
+        </div>
+        <Toaster />
       </main>
     );
   }
@@ -31,22 +63,35 @@ export default function Home() {
       </div>
 
       <div className="flex w-full max-w-md gap-4">
-        <button
-          className="flex h-24 flex-1 items-center justify-center gap-3 rounded-lg border-2 border-primary bg-primary text-lg text-primary-foreground hover:bg-primary/90"
-          onClick={() => setOrderType('snack')}
+        <Button
+          size="lg"
+          className="h-24 flex-1 gap-3 border-2 border-primary text-lg"
+          onClick={() => setView("order")}
         >
           <Cookie className="h-6 w-6" />
-          간식 신청
-        </button>
+          간식/조식 신청
+        </Button>
 
-        <button
-          className="flex h-24 flex-1 items-center justify-center gap-3 rounded-lg border-2 border-foreground/30 bg-transparent text-lg hover:bg-foreground/5"
-          onClick={() => setOrderType('breakfast')}
+        <Button
+          size="lg"
+          variant="outline"
+          className="h-24 flex-1 gap-3 border-2 border-foreground/30 text-lg bg-transparent"
+          onClick={() => setView("supply")}
         >
-          <Coffee className="h-6 w-6" />
-          조식 신청
-        </button>
+          <Package className="h-6 w-6" />
+          비품 신청
+        </Button>
       </div>
+
+      <Button
+        variant="ghost"
+        className="mt-6 gap-2 text-muted-foreground"
+        onClick={() => setView("my-orders")}
+      >
+        <ClipboardList className="h-4 w-4" />
+        내 신청 조회
+      </Button>
+      <Toaster />
     </main>
   );
 }
