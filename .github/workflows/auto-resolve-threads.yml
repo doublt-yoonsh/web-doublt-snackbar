@@ -7,6 +7,7 @@ on:
 jobs:
   auto-resolve:
     runs-on: ubuntu-latest
+    timeout-minutes: 5  # 5분 제한
     permissions:
       contents: read
       pull-requests: write
@@ -25,6 +26,7 @@ jobs:
           show_full_output: true
           use_sticky_comment: false
           claude_args: |
+            --model haiku
             --allowedTools "Bash(gh api:*),Bash(gh pr:*),Read,Grep,Glob"
           prompt: |
             REPO: ${{ github.repository }}
