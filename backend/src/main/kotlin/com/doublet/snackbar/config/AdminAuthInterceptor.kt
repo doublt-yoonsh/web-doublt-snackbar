@@ -14,6 +14,11 @@ class AdminAuthInterceptor(
     override fun preHandle(request: HttpServletRequest, response: HttpServletResponse, handler: Any): Boolean {
         if (request.method == "OPTIONS") return true
 
+        // /api/orders는 GET만 보호, POST는 일반 사용자도 접근 가능
+        if (request.requestURI == "/api/orders" && request.method != "GET") {
+            return true
+        }
+
         val token = request.getHeader("Authorization")?.removePrefix("Bearer ")
         if (!sessionService.isValidSession(token)) {
             response.status = 401
