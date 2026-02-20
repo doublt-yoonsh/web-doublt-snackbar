@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { LogOut, Shield, RefreshCw } from "lucide-react";
 import { Button } from "@/shared/components/ui/button";
 import { OrderFilters } from "./order-filters";
@@ -32,22 +32,25 @@ export function AdminDashboard({ onLogout }: AdminDashboardProps) {
     updateStatus,
   } = useOrders();
 
+  const isFirstRender = useRef(true);
+
   const loadOrders = useCallback(() => {
     fetchOrders(filters);
   }, [fetchOrders, filters]);
 
+  // 검색어 변경은 디바운스, 그 외 필터 변경은 즉시 실행
   useEffect(() => {
-    loadOrders();
-  }, [loadOrders]);
+    if (isFirstRender.current) {
+      isFirstRender.current = false;
+      fetchOrders(filters);
+      return;
+    }
 
-  // Debounce search
-  useEffect(() => {
     const timer = setTimeout(() => {
       fetchOrders(filters);
     }, 300);
     return () => clearTimeout(timer);
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [filters.search]);
+  }, [fetchOrders, filters]);
 
   return (
     <div className="mx-auto max-w-4xl px-4 py-6">
