@@ -12,5 +12,6 @@ class WebConfig(
     override fun addInterceptors(registry: InterceptorRegistry) {
         registry.addInterceptor(adminAuthInterceptor)
             .addPathPatterns("/api/orders/*/status")
+            .addPathPatterns("/api/orders")  // GET /api/orders 관리자 전용
     }
 }
