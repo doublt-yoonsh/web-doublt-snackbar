@@ -1,0 +1,146 @@
+name: Auto Resolve Review Threads
+
+on:
+  pull_request:
+    types: [synchronize]  # PR이 업데이트될 때만 실행
+
+jobs:
+  auto-resolve:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: write
+      id-token: write
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+
+      - name: Auto Resolve Review Threads
+        uses: anthropics/claude-code-action@v1
+        with:
+          claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+          show_full_output: true
+          use_sticky_comment: false
+          claude_args: |
+            --allowedTools "Bash(gh api:*),Bash(gh pr:*),Read,Grep,Glob"
+          prompt: |
+            REPO: ${{ github.repository }}
+            PR NUMBER: ${{ github.event.pull_request.number }}
+
+            ## 작업: 해결된 리뷰 스레드 자동 Resolve
+
+            이 PR의 열려있는 리뷰 스레드를 확인하고, 지적된 이슈가 해결된 것은 자동으로 Resolve 해주세요.
+
+            **중요: 단순히 코드가 수정되었다고 무조건 resolve하지 마세요. 반드시 아래 기준에 따라 신중하게 판단하세요.**
+
+            ### 1단계: 미해결 스레드 조회
+
+            ```bash
+            gh api graphql -f query='
+              query {
+                repository(owner: "${{ github.repository_owner }}", name: "${{ github.event.repository.name }}") {
+                  pullRequest(number: ${{ github.event.pull_request.number }}) {
+                    reviewThreads(first: 100) {
+                      nodes {
+                        id
+                        isResolved
+                        comments(first: 10) {
+                          nodes {
+                            id
+                            body
+                            path
+                            line
+                            diffHunk
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              }'
+            ```
+
+            ### 2단계: 각 미해결 스레드 검증
+
+            각 스레드에 대해:
+            1. 해당 파일의 **현재 코드**를 Read 도구로 읽어서 확인
+            2. 원래 지적된 이슈와 현재 코드를 비교하여 판단
+
+            **판단 기준:**
+
+            **✅ RESOLVED (완전 해결)**
+            - 지적된 이슈가 완전히 해결되었음
+            - 수정 과정에서 새로운 문제가 발생하지 않음
+            - 코드가 CLAUDE.md의 규칙을 준수함
+
+            **조치:**
+            ```bash
+            # 1. Resolve
+            gh api graphql -f query='
+              mutation {
+                resolveReviewThread(input: {threadId: "THREAD_ID"}) {
+                  thread { isResolved }
+                }
+              }'
+
+            # 2. 답글 달기
+            gh api repos/${{ github.repository_owner }}/${{ github.event.repository.name }}/pulls/comments/COMMENT_ID/replies \
+              -f body='✅ 이슈가 수정되어 자동으로 Resolve 합니다.'
+            ```
+
+            **⚠️ PARTIALLY_FIXED (부분 해결 / 새로운 문제 발생)**
+            - 수정은 했지만 불완전함 (예: 타입 문제는 해결했지만 다른 안티패턴 도입)
+            - 원래 이슈는 해결했지만 수정 과정에서 새로운 문제가 발생함
+            - 개선은 되었지만 완전하지 않음
+
+            **조치:** Resolve 하지 않고 상세한 피드백 댓글 작성
+            ```bash
+            gh api repos/${{ github.repository_owner }}/${{ github.event.repository.name }}/pulls/comments/COMMENT_ID/replies \
+              -f body='⚠️ **부분적으로만 수정됨**
+
+            [구체적인 문제점 설명]
+
+            **추가 수정 필요:**
+            - [상세한 개선 방안 1]
+            - [상세한 개선 방안 2]'
+            ```
+
+            **❌ NOT_FIXED (미해결)**
+            - 아직 수정되지 않았거나 전혀 반영되지 않음
+            - 코드가 변경되지 않음
+
+            **조치:** Resolve 하지 않고 상태 알림
+            ```bash
+            gh api repos/${{ github.repository_owner }}/${{ github.event.repository.name }}/pulls/comments/COMMENT_ID/replies \
+              -f body='❌ 아직 수정되지 않았습니다.
+
+            [현재 상태 설명]'
+            ```
+
+            **🤷 CANNOT_VERIFY (검증 불가)**
+            - 코드만으로는 판단할 수 없음 (실행이 필요한 경우)
+            - 파일이 삭제되었거나 크게 리팩토링됨
+            - 컨텍스트가 부족함
+
+            **조치:** 스킵 (아무 작업도 하지 않음)
+
+            ### 3단계: 결과 요약
+
+            처리 완료 후, 다음 형식으로 요약을 출력하세요:
+
+            ```
+            📊 리뷰 스레드 자동 Resolve 결과:
+               ✅ Resolved: N개
+               ⚠️  피드백 제공: N개
+               ❌ 미해결: N개
+               ⏭️  스킵: N개
+            ```
+
+            ### 주의사항
+
+            - CLAUDE.md의 Code Review Guidelines를 참고하여 판단하세요
+            - 의심스러우면 resolve하지 말고 PARTIALLY_FIXED나 CANNOT_VERIFY로 처리하세요
+            - 각 판단에 대한 근거를 명확히 하세요
