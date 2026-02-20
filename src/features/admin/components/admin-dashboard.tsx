@@ -38,7 +38,7 @@ export function AdminDashboard({ onLogout }: AdminDashboardProps) {
     fetchOrders(filters);
   }, [fetchOrders, filters]);
 
-  // 검색어 변경은 디바운스, 그 외 필터 변경은 즉시 실행
+  // 검색어 이외의 필터는 즉시 실행
   useEffect(() => {
     if (isFirstRender.current) {
       isFirstRender.current = false;
@@ -46,11 +46,18 @@ export function AdminDashboard({ onLogout }: AdminDashboardProps) {
       return;
     }
 
+    fetchOrders(filters);
+  }, [fetchOrders, filters.status, filters.department, filters.type, filters.dateFrom, filters.dateTo]);
+
+  // 검색어만 디바운스 (300ms)
+  useEffect(() => {
+    if (isFirstRender.current) return;
+
     const timer = setTimeout(() => {
       fetchOrders(filters);
     }, 300);
     return () => clearTimeout(timer);
-  }, [fetchOrders, filters]);
+  }, [fetchOrders, filters.search]);
 
   return (
     <div className="mx-auto max-w-4xl px-4 py-6">
