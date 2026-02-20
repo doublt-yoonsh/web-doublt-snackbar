@@ -18,8 +18,14 @@ class CorsConfig(
         val config = CorsConfiguration().apply {
             this.allowedOrigins = this@CorsConfig.allowedOrigins
             allowedMethods = listOf("GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS")
-            allowedHeaders = listOf("*")
+            allowedHeaders = listOf(
+                "Content-Type",
+                "Authorization",
+                "Accept",
+                "X-Requested-With"
+            )
             allowCredentials = true
+            maxAge = 3600L // preflight 요청 캐싱 (1시간)
         }
         val source = UrlBasedCorsConfigurationSource().apply {
             registerCorsConfiguration("/api/**", config)
